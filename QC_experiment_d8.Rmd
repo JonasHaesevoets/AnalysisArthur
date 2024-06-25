@@ -1,0 +1,89 @@
+---
+title: "QC Experiment d8,
+format: 
+  html:
+    code-fold: true
+editor: visual
+toc: true
+execute:
+  warning: false
+  message: false
+---
+
+# 1) load in packages and data
+
+```{r, echo=FALSE}
+library("easypackages")
+set.seed(2023)
+libraries("tidyverse", "Seurat", "tidyseurat", "tibble", 'scCustomize', 'RCurl', 'ensembldb', 'AnnotationHub')
+```
+
+```{r}
+file_path <- vector("list")
+file_path$output <- "../../Desktop/AnalysisArthur/output/"
+file_path$intermediate_data <- "../../Desktop/AnalysisArthur/intermediate_data/"
+file_path$raw_data_root <- "../../Desktop/AnalysisArthur/rawData/"
+file_names_tibble <- tribble(
+    ~library_name,
+    ~raw_seurat_obj_path,
+    ~path_sample_tag_calls,
+    ~write_processed_seurat_obj_path,
+
+    "d8",
+    #library_name
+    paste0(file_path$intermediate_data,"seurat_obj_d8_raw_dbec.rds"),
+    #raw_seurat_obj_path
+    paste0(file_path$raw_data_root,"output_J8/BD-Analysis-BMachiels-J8_Sample_Tag_Calls.csv"),
+    #path_sample_tag_calls
+    paste0(file_path$intermediate_data,"seurat_obj_d8_workflowed.rds"),
+    #write_processed_seurat_obj_path
+)
+```
+
+this function initalizes the sampletag_name metadata column in the seurat object at hand. If the sample (an individual cell) corresponds to a 'singlet' the sample will be annotated according to its condition (virustype or mock) and the degree of replicate
+
+```{r}
+seurat_sampletag_name <- function(seurat_obj, sample_tag_calls) {
+    sample_tag_calls <- sample_tag_calls %>%
+    seurat_obj$sampletag_name <- sample_tag_calls %>%
+        right_join(tibble(Cell_Index = colnames(seurat_obj)), by = "Cell_Index") %>%
+        pull(Sample_Name) %>%
+        as.factor()
+    
+    seurat_obj <- seurat_obj %>%
+        mutate(sampletag_multiplets = case_when(
+            sampletag_name == "Multiplet" ~ "multiplet",
+            sampletag_name == "Undetermined" ~ "undetermined",
+            TRUE ~ "single_hashtag"
+        )) %>%
+        mutate(sampletag_multiplets = factor(sampletag_multiplets,
+                                             levels = c("undetermined", "multiplet", "single_hashtag")))
+
+    seurat_obj$virus_factor <- seurat_obj %>%
+        pull(sampletag_name) %>%
+        str_split_fixed("_", 2)[, 1] %>%
+        as.factor()
+
+        pull(sampletag_name) %>%
+        str_split_fixed("_", 2)[, 1]
+    
+    return(seurat_obj)
+}
+
+
+```
+
+```{r}
+seurat_d8_raw = read_rds(file_names_tibble$raw_seurat_obj_path)
+for (line in 1:nrow(file_names_tibble)) {
+sample_tag_calls <- read_csv(file_names_tibble[[line,"path_sample_tag_calls"]], skip = 7) |>
+    mutate(Cell_Index=as.character(Cell_Index))
+}
+```
+
+```{r}
+seurat_d8_raw = seurat_sampletag_name(seurat_obj = seurat_d8_raw, sample_tag_calls = sample_tag_calls)
+seurat_d8_raw$amountUMI = seurat_d8_raw$nCount_RNA
+seurat_d8_raw$amountGenes = seurat_d8_raw$nFeature_RNA
+
+```
