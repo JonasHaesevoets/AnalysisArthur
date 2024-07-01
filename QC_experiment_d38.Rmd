@@ -500,5 +500,5 @@ DimPlot(seurat_d38_filtered_normalized,
 # Clear effect of cell cycle
 
 ```{r}
-# seurat_d38_filtered_normalized |> write_rds("intermediate_data/seurat_obj_d38_afterQCdashboard.rds")
+seurat_d38_filtered_normalized |> write_rds("intermediate_data/seurat_obj_d38_afterQCdashboard.rds")
 ```
