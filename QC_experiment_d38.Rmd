@@ -1,5 +1,5 @@
 ---
-title: "QC Experiment d8,
+title: "QC Experiment d38,
 format: 
   html:
     code-fold: true
@@ -29,13 +29,13 @@ file_names_tibble <- tribble(
     ~path_sample_tag_calls,
     ~write_processed_seurat_obj_path,
 
-    "d8",
+    "d38",
     #library_name
-    paste0(file_path$intermediate_data,"seurat_obj_d8_raw_dbec.rds"),
+    paste0(file_path$intermediate_data,"seurat_obj_d38_raw_dbec.rds"),
     #raw_seurat_obj_path
-    paste0(file_path$raw_data_root,"output_J8/BD-Analysis-BMachiels-J8_Sample_Tag_Calls.csv"),
+    paste0(file_path$raw_data_root,"output_J38/BD-Analysis-BMachiels-J38_Sample_Tag_Calls.csv"),
     #path_sample_tag_calls
-    paste0(file_path$intermediate_data,"seurat_obj_d8_workflowed.rds"),
+    paste0(file_path$intermediate_data,"seurat_obj_d38_workflowed.rds"),
     #write_processed_seurat_obj_path
 )
 ```
@@ -60,7 +60,7 @@ seurat_sampletag_name <- function(seurat_obj, sample_tag_calls){
     seurat_obj$virus <- tibble(sampletag_name=seurat_obj |> pull(sampletag_name)) |>       
     separate(sampletag_name,into = c("virus")) |> pull("virus")
     #sort the factors in their desired format
-    seurat_obj@meta.data$sampletag_name = factor(seurat_obj@meta.data$sampletag_name,     levels = c("Multiplet", "U ndetermined", "Mock_r1", "Mock_r2","MuHV4_r1", "MuHV4_r2", "MuHV4_r3","del73_r1", "del73_r2", "del73_r3"))
+    seurat_obj@meta.data$sampletag_name = factor(seurat_obj@meta.data$sampletag_name,     levels = c("Multiplet", "U ndetermined", "Mock_r1", "Mock_r2","Mock_r3", "MuHV4_r1", "MuHV4_r2", "MuHV4_r3","del73_r1", "del73_r2", "del73_r3"))
     
     return(seurat_obj)
 }
@@ -68,16 +68,16 @@ seurat_sampletag_name <- function(seurat_obj, sample_tag_calls){
 ```
 
 ```{r}
-seurat_d8_raw = read_rds(file_names_tibble$raw_seurat_obj_path)
+seurat_d38_raw = read_rds(file_names_tibble$raw_seurat_obj_path)
 for (line in 1:nrow(file_names_tibble)) {
 sample_tag_calls <- read_csv(file_names_tibble[[line,"path_sample_tag_calls"]], skip = 7)}
 ```
 
 ```{r}
 
-seurat_d8_raw = seurat_sampletag_name(seurat_obj = seurat_d8_raw, sample_tag_calls = sample_tag_calls)
-seurat_d8_raw$amountUMI = seurat_d8_raw$nCount_RNA
-seurat_d8_raw$amountGenes = seurat_d8_raw$nFeature_RNA
+seurat_d38_raw = seurat_sampletag_name(seurat_obj = seurat_d38_raw, sample_tag_calls = sample_tag_calls)
+seurat_d38_raw$amountUMI = seurat_d38_raw$nCount_RNA
+seurat_d38_raw$amountGenes = seurat_d38_raw$nFeature_RNA
 
 ```
 
@@ -102,14 +102,14 @@ a lower degree corresponds to cells suferring from technical issues during manip
 a lower degree corresponds to cells of poor quality like stressed damaged or dying cells
 
 ```{r}
-seurat_d8_raw$log10GenesPerUMI = log10(seurat_d8_raw$nFeature_RNA) / log10(seurat_d8_raw$nCount_RNA)
+seurat_d38_raw$log10GenesPerUMI = log10(seurat_d38_raw$nFeature_RNA) / log10(seurat_d38_raw$nCount_RNA)
 ```
 
 ## 2.2 Calculate the mitochondrial rate
 
 ```{r}
-seurat_d8_raw$mitoRatio <- PercentageFeatureSet(object = seurat_d8_raw, pattern = "^mt-")
-seurat_d8_raw$mitoRatio <- seurat_d8_raw@meta.data$mitoRatio / 100
+seurat_d38_raw$mitoRatio <- PercentageFeatureSet(object = seurat_d38_raw, pattern = "^mt-")
+seurat_d38_raw$mitoRatio <- seurat_d38_raw@meta.data$mitoRatio / 100
 ```
 
 # 3 Assessment and filtering of the general QC metrics
@@ -119,18 +119,18 @@ seurat_d8_raw$mitoRatio <- seurat_d8_raw@meta.data$mitoRatio / 100
 Make sure the seurat object only contains singlets i.e. filtering doublets and undetermined cells out
 
 ```{r, echo=FALSE}
-seurat_d8_raw = dplyr::filter(seurat_d8_raw, sampletag_multiplets == "single_hashtag")
-seurat_d8_raw
+seurat_d38_raw = dplyr::filter(seurat_d38_raw, sampletag_multiplets == "single_hashtag")
+
 ```
 
-### after filtering for singlets only 21695 cells out of 25962 were retained
+### after filtering for singlets only 24912 cells out of 29234 were retained
 
 ## 3.2 Visualize the distribution of the amount of cells amongst the virusFactors
 
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
-seurat_d8_raw %>% 
+seurat_d38_raw %>% 
   	ggplot(aes(x=virusFactor, fill=virusFactor)) + 
   	geom_bar() +
     scale_y_continuous(breaks=c(0,500,1000,1500,2000,2500,3000,3500,4000,4500,5000,5500,6000,6500,7000,7500,8000,8500,9000)) + 
@@ -140,15 +140,13 @@ seurat_d8_raw %>%
   	ggtitle("Amount cells in the different virusFactors")
 ```
 
-Before doing any subsequent filtering we see a quite substantial higher amount of cells corresponding to the viral virusFactors and about an even distribution of amount of cells betweeen the viral virusFactors
-
 ## 3.2 Visualize the distribution of the amount of cells amongst the virusFactors and Ms4a3
 
 ```{r}
 #| fig-width: 10
 #| fig-height: 12
 
-seurat_d8_raw %>% 
+seurat_d38_raw %>% 
   	ggplot(aes(x=sampletag_name, fill=sampletag_name)) + 
   	geom_bar(stat = "count") +
     scale_y_continuous(breaks=c(0,500,1000,1500,2000,2500,3000,3500,4000)) +
@@ -158,14 +156,14 @@ seurat_d8_raw %>%
   	ggtitle("Amount cells in the different virusFactors and Ms4a3")
 ```
 
-### less cells for MuHV4 second replicate compared to the rest
+### less cells for Mock second replicate compared to the rest
 
 ## 3.4 Density and plot showing amount of UMI per cell amongst the different virusFactors
 
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
-seurat_d8_raw %>% 
+seurat_d38_raw %>% 
   	ggplot(aes(color=virusFactor, x=amountUMI, fill= virusFactor)) + 
   	geom_density(alpha = 0.2) + 
   	theme_classic() +
@@ -178,7 +176,7 @@ seurat_d8_raw %>%
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
-seurat_d8_raw %>% 
+seurat_d38_raw %>% 
   	ggplot(aes(color=sampletag_name, x=amountUMI, fill= sampletag_name)) + 
   	geom_density(alpha = 0.2) + 
   	theme_classic() +
@@ -193,7 +191,7 @@ seurat_d8_raw %>%
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
-seurat_d8_raw %>% 
+seurat_d38_raw %>% 
   	ggplot(aes(color=virusFactor, x=amountGenes, fill= virusFactor)) + 
   	geom_density(alpha = 0.2) + 
   	theme_classic() +
@@ -205,7 +203,7 @@ seurat_d8_raw %>%
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
-seurat_d8_raw %>% 
+seurat_d38_raw %>% 
   	ggplot(aes(color=sampletag_name, x=amountGenes, fill= sampletag_name)) + 
   	geom_density(alpha = 0.2) + 
   	theme_classic() +
@@ -227,7 +225,7 @@ From this we see only cells in the bottom left, these cells are likely of bad qu
 ```{r}
 #| fig-width: 10
 #| fig-height: 10
-seurat_d8_raw %>% 
+seurat_d38_raw %>% 
   	ggplot(aes(x=amountUMI, y=amountGenes, color=mitoRatio)) + 
   	geom_point() + 
 	  scale_colour_gradient(low = "green", high = "red") +
@@ -248,7 +246,7 @@ seurat_d8_raw %>%
 ```{r}
 #| fig-width: 10
 #| fig-height: 10
-seurat_d8_raw %>%
+seurat_d38_raw %>%
   ggplot(aes(x = sampletag_name, y = amountGenes, fill = sampletag_name)) +
   geom_boxplot(outlier.shape = "triangle") +  # Hide outliers initially
   theme_classic() +
@@ -262,7 +260,7 @@ seurat_d8_raw %>%
 ```{r}
 #| fig-width: 10
 #| fig-height: 10
-seurat_d8_raw %>% 
+seurat_d38_raw %>% 
   	ggplot(aes(x=sampletag_name, y=amountUMI, fill=sampletag_name)) + 
   	geom_boxplot(outlier.shape = "triangle") + 
   	theme_classic() +
@@ -276,7 +274,7 @@ seurat_d8_raw %>%
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
-seurat_d8_raw %>% 
+seurat_d38_raw %>% 
   ggplot(aes(color=virusFactor, x=log10GenesPerUMI, fill= virusFactor)) + 
   geom_density(alpha = 0.2) + 
   theme_classic()
@@ -287,7 +285,7 @@ seurat_d8_raw %>%
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
-seurat_d8_raw %>% 
+seurat_d38_raw %>% 
   ggplot(aes(color=sampletag_name, x=log10GenesPerUMI, fill= sampletag_name)) + 
   geom_density(alpha = 0.2) + 
   theme_classic()
@@ -300,7 +298,7 @@ seurat_d8_raw %>%
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
-seurat_d8_raw %>% 
+seurat_d38_raw %>% 
   ggplot(aes(color=virusFactor, x=mitoRatio, fill= virusFactor)) + 
   geom_density(alpha = 0.2) +
   theme_classic() 
@@ -311,7 +309,7 @@ seurat_d8_raw %>%
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
-seurat_d8_raw %>% 
+seurat_d38_raw %>% 
   ggplot(aes(color=sampletag_name, x=mitoRatio, fill= sampletag_name)) + 
   geom_density(alpha = 0.2) +
   theme_classic() 
@@ -321,21 +319,21 @@ seurat_d8_raw %>%
 # 4) Filtering of poor quality cells
 
 ```{r}
-seurat_d8_filtered = dplyr::filter(seurat_d8_raw, 
+seurat_d38_filtered = dplyr::filter(seurat_d38_raw, 
                                 (mitoRatio < 0.2) &
                                 (amountGenes > 500) &
                                 (amountUMI > 5000) &
                                 (log10GenesPerUMI > 0.8))
 ```
 
-17309 cells out of 25962 cells were rretained
+20208 cells out of 25962 cells were retained
 
 ## 4.1 Visualize the distribution of the amount of cells amongst the virusFactors after cell level filtering
 
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
-seurat_d8_filtered %>% 
+seurat_d38_filtered %>% 
   	ggplot(aes(x=virusFactor, fill=virusFactor)) + 
   	geom_bar() +
     scale_y_continuous(breaks=c(0,500,1000,1500,2000,2500,3000,3500)) + 
@@ -351,7 +349,7 @@ seurat_d8_filtered %>%
 #| fig-width: 10
 #| fig-height: 8
 
-seurat_d8_filtered %>% 
+seurat_d38_filtered %>% 
   	ggplot(aes(x=sampletag_name, fill=sampletag_name)) + 
   	geom_bar(stat = "count") +
     scale_y_continuous(breaks=c(0,500,1000,1500,2000,2500,3000,3500)) +
@@ -366,7 +364,7 @@ seurat_d8_filtered %>%
 We do not want to retain genes that are only expressed exclusively in a very low amount of cells as well
 
 ```{r}
-countsDataset <- GetAssayData(object = seurat_d8_filtered, slot = "counts")
+countsDataset <- GetAssayData(object = seurat_d38_filtered, slot = "counts")
 
 nonzero <- countsDataset > 0
 # only retain genes who are expressed in 5 or more cells so we retain rare possible muts
@@ -376,20 +374,20 @@ keep_genes <- Matrix::rowSums(nonzero) >= 5
 filtered_counts <- countsDataset[keep_genes, ]
 
 #create a new object filtered1 because otherwise you lose the other assay data
-seurat_d8_filtered1 <- CreateSeuratObject(counts = filtered_counts, meta.data = seurat_d8_filtered@meta.data)
+seurat_d38_filtered1 <- CreateSeuratObject(counts = filtered_counts, meta.data = seurat_d38_filtered@meta.data)
 # copy them back from the object where the genes werent filtered
-seurat_d8_filtered1@assays$protein = seurat_d8_filtered@assays$protein
-seurat_d8_filtered1@assays$sampletags = seurat_d8_filtered@assays$sampletags
+seurat_d38_filtered1@assays$protein = seurat_d38_filtered@assays$protein
+seurat_d38_filtered1@assays$sampletags = seurat_d38_filtered@assays$sampletags
 ```
 
-# After QC we retain 22985 genes and 17309 cells from 27314 genes and 25962 cells
+# After QC we retain 236632 genes and 20208 cells from 28921 genes and 23663 cells
 
 # 6 Normalization
 
 ## 6.1 Normalize the counts
 
 ```{r}
-seurat_d8_filtered_normalized = NormalizeData(seurat_d8_filtered1)
+seurat_d38_filtered_normalized = NormalizeData(seurat_d38_filtered1)
 ```
 
 ## 6.2 Check for effect of cell cycle
@@ -451,7 +449,7 @@ g2m_genes <- cell_cycle_markers %>%
 
 ```{r}
 # Perform cell cycle scoring
-seurat_d8_filtered_normalized <- CellCycleScoring(seurat_d8_filtered_normalized,
+seurat_d38_filtered_normalized <- CellCycleScoring(seurat_d38_filtered_normalized,
  g2m.features = g2m_genes,
  s.features = s_genes)
 
@@ -463,7 +461,7 @@ seurat_d8_filtered_normalized <- CellCycleScoring(seurat_d8_filtered_normalized,
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
-VlnPlot(seurat_d8_filtered_normalized, features = c("S.Score", "G2M.Score"), group.by = "sampletag_name")
+VlnPlot(seurat_d38_filtered_normalized, features = c("S.Score", "G2M.Score"), group.by = "sampletag_name")
 ```
 
 The violin plot shows clear evidence of a substantial amount of cycling genes in this case. Further investigate this with a PCA plot
@@ -473,19 +471,19 @@ The violin plot shows clear evidence of a substantial amount of cycling genes in
 To do PCA we have to do 2 things, first choose the most variable genes (features) and then scale the data. This order is important because, highly expressed genes exhibit the highest amount of variation and we don't want our 'highly variable genes' only to reflect high expression, we need to scale the data to scale variation with expression level.
 
 ```{r}
-seurat_d8_filtered_normalized <- FindVariableFeatures(seurat_d8_filtered_normalized, 
+seurat_d38_filtered_normalized <- FindVariableFeatures(seurat_d38_filtered_normalized, 
                      selection.method = "vst",
                      nfeatures = 2000, 
                      verbose = FALSE)
-seurat_d8_filtered_normalized = ScaleData(seurat_d8_filtered_normalized)
-seurat_d8_filtered_normalized = RunPCA(seurat_d8_filtered_normalized)
+seurat_d38_filtered_normalized = ScaleData(seurat_d38_filtered_normalized)
+seurat_d38_filtered_normalized = RunPCA(seurat_d38_filtered_normalized)
 
 ```
 
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
-DimPlot(seurat_d8_filtered_normalized,
+DimPlot(seurat_d38_filtered_normalized,
         reduction = "pca",
         group.by= "Phase",
         split.by = "Phase")
@@ -494,13 +492,13 @@ DimPlot(seurat_d8_filtered_normalized,
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
-DimPlot(seurat_d8_filtered_normalized,
+DimPlot(seurat_d38_filtered_normalized,
         reduction = "pca",
         group.by= "Phase")
 ```
 
-# Clear effect of cell cycle 
+# Clear effect of cell cycle
 
 ```{r}
-seurat_d8_filtered_normalized |> write_rds("intermediate_data/seurat_obj_d8_afterQCdashboard.rds")
+# seurat_d38_filtered_normalized |> write_rds("intermediate_data/seurat_obj_d38_afterQCdashboard.rds")
 ```
