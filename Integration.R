@@ -60,17 +60,17 @@ obj.v5 <- FindNeighbors(obj.v5, reduction = "integrated.harmony", dims = 1:40)
 resolution.range <- seq(from = 0, to = 1, by = 0.2)
 
 obj.v5 <- Seurat::FindClusters(object = obj.v5, resolution = resolution.range)
-resolution.range <- seq(from = 0, to = 0.2, by = 0.02)
+resolution.range <- seq(from = 0, to = 0.4, by = 0.02)
 
 obj.v5 <- Seurat::FindClusters(object = obj.v5, resolution = resolution.range)
 clustree(obj.v5)
-ggsave("clustree_integration.png", path = "../../Desktop/AnalysisArthur/CaseStudy_QC_integration/integration", width = 14, height = 14)
+ggsave("clustree_integration.png", path = "../../Desktop/AnalysisArthur/CaseStudy_QC_integration/integration", width = 20, height = 20)
 
-# based on this we decided to put the resolution at 0.18
+# based on this we decided to put the resolution at 0.22
 
-# obj.v5 <- FindClusters(obj.v5, cluster.name = "harmony_clusters_0.18", resolution = 0.18)
-# obj.v5 <- RunUMAP(obj.v5, reduction = "integrated.harmony", reduction.name = "umap_harmony", dims = 1:40)
-# obj.v5 |> DimPlot(group.by = "harmony_clusters_0.18", label=T)
-# ggsave("umap_0.18.png", path = "../../Documents/machiels_lab_viral/CaseStudy_QC_integration/integration", width = 12, height = 10)
-# 
-# obj.v5 |>  write_rds("../../Documents/machiels_lab_viral/intermediate_data/seurat_obj_experiment_1_2_integrated.rds")
+obj.v5 <- FindClusters(obj.v5, cluster.name = "harmony_clusters_0.22", resolution = 0.22)
+obj.v5 <- RunUMAP(obj.v5, reduction = "integrated.harmony", reduction.name = "umap_harmony", dims = 1:40)
+obj.v5 |> DimPlot(group.by = "harmony_clusters_0.22", label=T)
+ggsave("umap_0.22.png", path = "../../Desktop/AnalysisArthur/CaseStudy_QC_integration/integration", width = 12, height = 10)
+
+obj.v5 |>  write_rds("../../Documents/machiels_lab_viral/intermediate_data/seurat_obj_integrated.rds")
