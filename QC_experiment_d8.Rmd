@@ -1,5 +1,5 @@
 ---
-title: "QC Experiment d8,
+title: "QC Experiment d8"
 format: 
   html:
     code-fold: true
@@ -499,7 +499,7 @@ DimPlot(seurat_d8_filtered_normalized,
         group.by= "Phase")
 ```
 
-# Clear effect of cell cycle 
+# Clear effect of cell cycle
 
 ```{r}
 seurat_d8_filtered_normalized |> write_rds("intermediate_data/seurat_obj_d8_afterQCdashboard.rds")

@@ -1,5 +1,5 @@
 ---
-title: "QC Experiment d38,
+title: "QC Experiment d38"
 format: 
   html:
     code-fold: true
@@ -380,7 +380,7 @@ seurat_d38_filtered1@assays$protein = seurat_d38_filtered@assays$protein
 seurat_d38_filtered1@assays$sampletags = seurat_d38_filtered@assays$sampletags
 ```
 
-# After QC we retain 236632 genes and 20208 cells from 28921 genes and 23663 cells
+# After QC we retain 23632 genes and 20208 cells from 28921 genes and 23663 cells
 
 # 6 Normalization
 
