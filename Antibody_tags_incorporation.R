@@ -4,7 +4,7 @@ library(tidyseurat)
 library(Matrix)
 library(data.table)
 library(dsb)
-
+set.seed(2023)
 
 # read in all sequencing counts of all Rhapsody wells
 # this means also those wells that the rhapsody pipeline does not call as containing a cell

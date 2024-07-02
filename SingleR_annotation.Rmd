@@ -1,0 +1,55 @@
+---
+title: "SingleR annotation"
+format: 
+  html:
+    code-fold: true
+editor: visual
+toc: true
+execute:
+  warning: false
+  message: false
+---
+
+```{r}
+set.seed(2023)
+
+easypackages::libraries("Seurat","tidyverse","SingleR", "ggridges", "viridis", "ggh4x", "celldex", "scCustomize", "SeuratWrappers", "ggExtra", "textTinyR", "patchwork", "pheatmap", "ggrepel", "tidyseurat", "ggpubr", "viridis", "writexl", "readxl", "presto", "scCustomize", "qs", "sctransform","glmGamPoi", "clusterProfiler", "enrichplot", "ExperimentHub", "scuttle" ,"cowplot",
+                        'clusterProfiler',
+                        'org.Mm.eg.db',
+                        'tidyseurat',
+                        'enrichplot',
+                        'xlsx', 'clustree')
+
+
+obj_full = read_rds("../../Desktop/AnalysisArthur/intermediate_data/seurat_obj_central.rds")
+DefaultAssay(obj_full) = "RNA"
+```
+
+```{r}
+#change the seurat object to a single cell experiment object for input in SingleR
+sce = as.SingleCellExperiment(x = obj_full, assay = c("RNA"))
+# need log normalized counts as input for SingleR
+sce = logNormCounts(sce)
+
+```
+
+```{r}
+EH <- ExperimentHub()
+REF <- EH[['EH1617']]
+REF <- REF[,!is.na(REF$cell_ontology_class)]
+boneMarrow_ref <- REF[,REF$tissue == 'Marrow']
+# log normalize the counts as before 
+boneMarrow_ref <- logNormCounts(boneMarrow_ref)
+# run SingleR
+results_tabulamuris <- SingleR(test = sce, ref = boneMarrow_ref, labels = boneMarrow_ref$cell_ontology_class)
+```
+
+```{r}
+#| fig-width: 15
+#| fig-height: 20
+#visualize the celltypes of the different clusters
+obj_full$singleR_tabulamuris = results_tabulamuris$labels
+DimPlot(obj_full, reduction = "umap_harmony", group.by = "singleR_tabulamuris", label = TRUE)
+ggsave("annotation_tabulamuris.png", width = 25, height = 20, units = "cm", path = "../../Desktop/AnalysisArthur/Case_study_annotation")
+
+```
