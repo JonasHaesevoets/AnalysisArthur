@@ -3,6 +3,8 @@ library(clustree)
 library(tidyseurat)
 library(readr)
 library(Seurat)
+library(presto)
+library(writexl)
 set.seed(2023)
 
 # load and merge data files
@@ -73,4 +75,10 @@ obj.v5 <- RunUMAP(obj.v5, reduction = "integrated.harmony", reduction.name = "um
 obj.v5 |> DimPlot(group.by = "harmony_clusters_0.22", label=T)
 ggsave("umap_0.22.png", path = "../../Desktop/AnalysisArthur/CaseStudy_QC_integration/integration", width = 12, height = 10)
 
-obj.v5 |>  write_rds("../../Documents/machiels_lab_viral/intermediate_data/seurat_obj_integrated.rds")
+obj.v5 |>  write_rds("../../Desktop/AnalysisArthur/intermediate_data/seurat_obj_integrated.rds")
+
+
+
+obj.v5 =  read_rds("../../Desktop/AnalysisArthur/intermediate_data/seurat_obj_integrated.rds")
+markers = FindAllMarkers(obj.v5, assay = "RNA")
+write_xlsx(markers, "../../Desktop/AnalysisArthur/CaseStudy_QC_integration/markers_raw.xlsx")
