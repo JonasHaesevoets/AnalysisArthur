@@ -53,3 +53,27 @@ DimPlot(obj_full, reduction = "umap_harmony", group.by = "singleR_tabulamuris", 
 ggsave("annotation_tabulamuris.png", width = 25, height = 20, units = "cm", path = "../../Desktop/AnalysisArthur/Case_study_annotation")
 
 ```
+
+```{r}
+seurat_d0 =  obj_full %>%  filter(str_detect(day_mock, "day0"))
+DimPlot(seurat_d0, label = T)
+ggsave("umap_day0.png", width = 25, height = 20, units = "cm", path = "../../Desktop/AnalysisArthur/Case_study_annotation/")
+```
+
+```{r}
+seurat_d8 =  obj_full %>%  filter(str_detect(day_mock, "day8"))
+DimPlot(seurat_d8, label = T)
+ggsave("umap_day8.png", width = 25, height = 20, units = "cm", path = "../../Desktop/AnalysisArthur/Case_study_annotation/")
+```
+
+```{r}
+seurat_d38 =  obj_full %>%  filter(str_detect(day_mock, "day38"))
+DimPlot(seurat_d38, label = T)
+ggsave("umap_day38.png", width = 25, height = 20, units = "cm", path = "../../Desktop/AnalysisArthur/Case_study_annotation/")
+```
+
+```{r}
+DefaultAssay(obj_full) = "adt"
+row.names(obj_full)
+FeaturePlot(obj_full, features = "i-a-i-e-h2-ab-ad-aq-ed-ek-amm2019-p-ab-o")
+```

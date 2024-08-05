@@ -11,11 +11,12 @@ set.seed(2023)
 
 ## read in the empty
 unfiltered_csv_paths <- c( "../../Desktop/AnalysisArthur/rawData/Output_J8/BD-Analysis-BMachiels-J8_DBEC_MolsPerCell_Unfiltered.csv.gz",
-                           "../../Desktop/AnalysisArthur/rawData/Output_J38/BD-Analysis-BMachiels-J38_DBEC_MolsPerCell_Unfiltered.csv.gz")
+                           "../../Desktop/AnalysisArthur/rawData/Output_J38/BD-Analysis-BMachiels-J38_DBEC_MolsPerCell_Unfiltered.csv.gz",
+                           "../../Desktop/AnalysisArthur/rawData/Output_J120/BD-Analysis-BMachiels-EXP3_DBEC_MolsPerCell_Unfiltered.csv.gz")
 
 
 
-exp_name <- c("day8", "day38")
+exp_name <- c("day8", "day38", "day120")
 
 for (i in seq_along(unfiltered_csv_paths)) {
   # we read only those proteins who were actually stained
@@ -34,15 +35,16 @@ for (i in seq_along(unfiltered_csv_paths)) {
 # coming from the specific scripts for each of the data specific scripts which were ran in the QC dashboard
 day_8 = read_rds("intermediate_data/seurat_obj_d8_afterQCdashboard.rds")
 day_38 = read_rds("intermediate_data/seurat_obj_d8_afterQCdashboard.rds")
-
-setup_chunks <- c(day_8, day_38)
+day_120 = read_rds("intermediate_data/seurat_obj_d120_afterQCdashboard.rds")
+setup_chunks <- c(day_8, day_38, day_120)
 
 # the counts also containing empty wells for the proteins
 unfiltered_prot_counts <- c(
   "intermediate_data/day8unfiltered_prot_counts_fread.csv",
-  "intermediate_data/day38unfiltered_prot_counts_fread.csv")
+  "intermediate_data/day38unfiltered_prot_counts_fread.csv",
+  "intermediate_data/day120unfiltered_prot_counts_fread.csv")
 
-dataset_name <- c("d8", "d38")
+dataset_name <- c("d8", "d38", "d120")
 
 # unfiltered_prot_counts <- unfiltered_prot_counts |> map_vec(\(x) paste0("intermediate_data/", x))
 
@@ -135,12 +137,12 @@ path_1 <- "intermediate_data/seurat_obj_integrated.rds"
 obj.v5 <- read_rds(path_1)
 
 # Read and preprocess protein count matrices for each experiment
-d8 <- "intermediate_data/dsb_matrix_d8.rds" |> read_rds() |> t() |> as_tibble(rownames = "cell") |> mutate(cell = paste0("exp_1_lung_", cell))
-d38 <- "intermediate_data/dsb_matrix_d38.rds" |> read_rds() |> t() |> as_tibble(rownames = "cell") |> mutate(cell = paste0("exp_2_lung_", cell))
-
+d8 <- "intermediate_data/dsb_matrix_d8.rds" |> read_rds() |> t() |> as_tibble(rownames = "cell") |> mutate(cell = paste0("exp_1", cell))
+d38 <- "intermediate_data/dsb_matrix_d38.rds" |> read_rds() |> t() |> as_tibble(rownames = "cell") |> mutate(cell = paste0("exp_2", cell))
+d120 <- "intermediate_data/dsb_matrix_d120.rds" |> read_rds() |> t() |> as_tibble(rownames = "cell") |> mutate(cell = paste0("exp_3", cell))
 
 # Combine all protein count matrices into one
-dsb_all <- bind_rows(d8, d38)
+dsb_all <- bind_rows(d8, d38,d120)
 
 # Extract protein features
 dsb_features <- colnames(dsb_all)[-1]

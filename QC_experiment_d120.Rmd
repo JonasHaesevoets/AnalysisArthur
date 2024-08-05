@@ -1,0 +1,507 @@
+---
+title: "QC Experiment d120"
+format: 
+  html:
+    code-fold: true
+editor: visual
+toc: true
+execute:
+  warning: false
+  message: false
+---
+
+# 1) load in packages and data
+
+```{r, echo=FALSE}
+library("easypackages")
+set.seed(2023)
+libraries("tidyverse", "Seurat", "tidyseurat", "tibble", 'scCustomize', 'RCurl', 'ensembldb', 'AnnotationHub', "RCurl", "AnnotationHub", "ensembldb")
+```
+
+```{r}
+file_path <- vector("list")
+file_path$output <- "../../Desktop/AnalysisArthur/output/"
+file_path$intermediate_data <- "../../Desktop/AnalysisArthur/intermediate_data/"
+file_path$raw_data_root <- "../../Desktop/AnalysisArthur/rawData/"
+file_names_tibble <- tribble(
+    ~library_name,
+    ~raw_seurat_obj_path,
+    ~path_sample_tag_calls,
+    ~write_processed_seurat_obj_path,
+
+    "d120",
+    #library_name
+    paste0(file_path$intermediate_data,"seurat_obj_d120_raw_dbec.rds"),
+    #raw_seurat_obj_path
+    paste0(file_path$raw_data_root,"output_J120/BD-Analysis-BMachiels-EXP3_Sample_Tag_Calls.csv"),
+    #path_sample_tag_calls
+    paste0(file_path$intermediate_data,"seurat_obj_d120_workflowed.rds"),
+    #write_processed_seurat_obj_path
+)
+```
+
+this function initalizes the sampletag_name metadata column in the seurat object at hand. If the sample (an individual cell) corresponds to a 'singlet' the sample will be annotated according to its virusFactor (virustype or mock) and the degree of replicate
+
+```{r}
+seurat_sampletag_name <- function(seurat_obj, sample_tag_calls){
+    seurat_obj$sampletag_name <- sample_tag_calls  |>
+        right_join(tibble(Cell_Index = as.double(colnames(seurat_obj))), by = "Cell_Index") |>
+        mutate(Sample_Name=str_replace(Sample_Name,pattern="\\-",replacement = "_"))|>    pull(Sample_Name) |>  as_factor()
+    seurat_obj <- seurat_obj |>  mutate(sampletag_multiplets=case_when(
+        sampletag_name=="Multiplet" ~ "multiplet",
+        sampletag_name=="Undetermined" ~"undeterminded",
+        TRUE ~ "single_hashtag")) |> 
+        mutate(sampletag_multiplets=factor(sampletag_multiplets,
+                                           levels=c("undeterminded",
+                                                    "multiplet",
+                                                    "single_hashtag"))) 
+    seurat_obj$virusFactor <- seurat_obj |> pull(sampletag_name) |> 
+      str_split_i(i=1, pattern = "_") |> as_factor()
+    seurat_obj$virus <- tibble(sampletag_name=seurat_obj |> pull(sampletag_name)) |>       
+    separate(sampletag_name,into = c("virus")) |> pull("virus")
+    #sort the factors in their desired format
+    seurat_obj@meta.data$sampletag_name = factor(seurat_obj@meta.data$sampletag_name,     levels = c("Multiplet", "Undetermined", "Mock_r1", "Mock_r2","MuHV4_r1", "MuHV4_r2", "MuHV4_r3","del73_r1", "del73_r2", "del73_r3"))
+    
+    return(seurat_obj)
+}
+
+```
+
+```{r}
+seurat_d120_raw = read_rds(file_names_tibble$raw_seurat_obj_path)
+for (line in 1:nrow(file_names_tibble)) {
+sample_tag_calls <- read_csv(file_names_tibble[[line,"path_sample_tag_calls"]], skip = 7)}
+```
+
+```{r}
+
+seurat_d120_raw = seurat_sampletag_name(seurat_obj = seurat_d120_raw, sample_tag_calls = sample_tag_calls)
+seurat_d120_raw$amountUMI = seurat_d120_raw$nCount_RNA
+seurat_d120_raw$amountGenes = seurat_d120_raw$nFeature_RNA
+
+```
+
+# 2) QC and it's associated metrics
+
+the object at day 120 contains 35808 different cells and 28958 genes.
+
+Many of those might contain a high degree of mitochondrial genes indicating that the individual cells or damaged and/or are dying. Because when the cell membrane breaks down mRNA from the cytoplasm starts to leak out leaving out a higher degree of mitochondrial RNA which is more resistant to degradation.
+
+Many of those might be so called doulets. When two cells are accidentally captured together during the isolation process, their combined gene expression profile is recorded. This creates a "doublet" event, where the resulting data represents a mixture of two distinct cell types. This skews the overall data and introduces misleading information about the true expression patterns within the individual cell populations.
+
+Another subpopulation of single cell samples that need to be filtered out are the so called undetermined single cell samples. These single cell samples might not be a single cell but a cellular fragment, debris, or even an artifact. These "undetermined" events contribute noise to the data and can hinder the accurate identification of cell types.
+
+## 2.1 Calculate the complexity (amount genes detected per UMI)
+
+the amount of genes detected per UMI aka the amount of genes detected per cell
+
+a higher degree corresponds to a more diverse and complex transcriptome within the individual cell
+
+a lower degree corresponds to cells suferring from technical issues during manipulation
+
+a lower degree corresponds to cells of poor quality like stressed damaged or dying cells
+
+```{r}
+seurat_d120_raw$log10GenesPerUMI = log10(seurat_d120_raw$nFeature_RNA) / log10(seurat_d120_raw$nCount_RNA)
+```
+
+## 2.2 Calculate the mitochondrial rate
+
+```{r}
+seurat_d120_raw$mitoRatio <- PercentageFeatureSet(object = seurat_d120_raw, pattern = "^mt-")
+seurat_d120_raw$mitoRatio <- seurat_d120_raw@meta.data$mitoRatio / 100
+```
+
+# 3 Assessment and filtering of the general QC metrics
+
+## 3.1 Remove doublets and undetermined cells
+
+Make sure the seurat object only contains singlets i.e. filtering doublets and undetermined cells out
+
+```{r, echo=FALSE}
+seurat_d120_raw <- dplyr::filter(seurat_d120_raw, sampletag_multiplets == "single_hashtag" & !is.na(sampletag_name))
+
+seurat_d120_raw
+```
+
+### after filtering for singlets only 21695 cells out of 25962 were retained
+
+## 3.2 Visualize the distribution of the amount of cells amongst the virusFactors
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+seurat_d120_raw %>% 
+  	ggplot(aes(x=virusFactor, fill=virusFactor)) + 
+  	geom_bar() +
+    scale_y_continuous(breaks=c(0,500,1000,1500,2000,2500,3000,3500,4000,4500,5000,5500,6000,6500,7000,7500,8000,8500,9000)) + 
+  	theme_classic() +
+  	theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  	theme(plot.title = element_text(hjust=0.5, face="bold")) +
+  	ggtitle("Amount cells in the different virusFactors")
+```
+
+Before doing any subsequent filtering we see a quite substantial higher amount of cells corresponding to the viral virusFactors and about an even distribution of amount of cells betweeen the viral virusFactors
+
+## 3.2 Visualize the distribution of the amount of cells amongst the virusFactors and Ms4a3
+
+```{r}
+#| fig-width: 10
+#| fig-height: 12
+
+seurat_d120_raw %>% 
+  	ggplot(aes(x=sampletag_name, fill=sampletag_name)) + 
+  	geom_bar(stat = "count") +
+    scale_y_continuous(breaks=c(0,500,1000,1500,2000,2500,3000,3500,4000)) +
+  	theme_classic() +
+  	theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  	theme(plot.title = element_text(hjust=0.5, face="bold")) +
+  	ggtitle("Amount cells in the different virusFactors and Ms4a3")
+```
+
+### less cells for MuHV4 second replicate compared to the rest
+
+## 3.4 Density and plot showing amount of UMI per cell amongst the different virusFactors
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+seurat_d120_raw %>% 
+  	ggplot(aes(color=virusFactor, x=amountUMI, fill= virusFactor)) + 
+  	geom_density(alpha = 0.2) + 
+  	theme_classic() +
+  	ylab("Cell density") +
+  	geom_vline(xintercept = 5000)
+```
+
+## 3.5 Density and plot showing amount of UMI per cell amongst the different virusFactors and replicates
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+seurat_d120_raw %>% 
+  	ggplot(aes(color=sampletag_name, x=amountUMI, fill= sampletag_name)) + 
+  	geom_density(alpha = 0.2) + 
+  	theme_classic() +
+  	ylab("Cell density") +
+  	geom_vline(xintercept = 500)
+```
+
+### Sequencing depth is appropriate generally when the UMI counts per cell are below 500 they cannot be used or when between 500-1000 it can be used but sequencing should be deeper. In this case it looks appropriate
+
+## 3.6 Density and plot showing amount of genes per cell amongst the virusFactors
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+seurat_d120_raw %>% 
+  	ggplot(aes(color=virusFactor, x=amountGenes, fill= virusFactor)) + 
+  	geom_density(alpha = 0.2) + 
+  	theme_classic() +
+  	ylab("Cell density") 
+```
+
+## 3.7 Density and plot showing amount of genes per cell amongst the virusFactors and replicates
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+seurat_d120_raw %>% 
+  	ggplot(aes(color=sampletag_name, x=amountGenes, fill= sampletag_name)) + 
+  	geom_density(alpha = 0.2) + 
+  	theme_classic() +
+  	ylab("Cell density") 
+
+```
+
+```         
+```
+
+## 3.8 number of genes versus the number of UMIs coloured by the proportion of mitochondrial reads
+
+Visualize the correlation between genes detected and number of UMIs and determine whether strong presence of cells with low numbers of genes/UMIsVisualize the correlation between genes detected and number of UMIs and determine whether strong presence of cells with low numbers of genes/UMIs.
+
+From this we see only cells in the bottom left, these cells are likely of bad quality since they have a lower amount of UMI and genes. Combine this with the observation that they also contain a higher fraction of mitochondrial reads it can be fair to assume that these cells are possiby dying or are of bad quality.
+
+#### Although increased circulating mitochondrial DNA (mtDNA) has been reported in chronic lung diseases (<https://www.researchgate.net/publication/333656561_PINK1_attenuates_mtDNA_release_in_alveolar_epithelial_cells_and_TLR9_mediated_profibrotic_responses>)
+
+```{r}
+#| fig-width: 10
+#| fig-height: 10
+seurat_d120_raw %>% 
+  	ggplot(aes(x=amountUMI, y=amountGenes, color=mitoRatio)) + 
+  	geom_point() + 
+	  scale_colour_gradient(low = "green", high = "red") +
+  	stat_smooth(method=lm) +
+  	scale_x_log10() + 
+  	scale_y_log10() + 
+  	theme_classic() +
+  	facet_wrap(~sampletag_name, scales = "free_x") +
+    theme(axis.text.x = element_text(size = 8),
+          axis.text.y = element_text(size = 8),
+          legend.text = element_text(size = 14),
+          legend.title = element_text(size = 14),
+          plot.title = element_text(size = 14, hjust = 0.5))
+```
+
+## 3.9 Boxplot investigating distribution of genes and UMI detected per cell
+
+```{r}
+#| fig-width: 10
+#| fig-height: 10
+seurat_d120_raw %>%
+  ggplot(aes(x = sampletag_name, y = amountGenes, fill = sampletag_name)) +
+  geom_boxplot(outlier.shape = "triangle") +  # Hide outliers initially
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold")) +
+  ggtitle("Amount Cells vs. Amount Genes")
+```
+
+## 3.10 Boxplot investigating distribution of UMI detected per cell
+
+```{r}
+#| fig-width: 10
+#| fig-height: 10
+seurat_d120_raw %>% 
+  	ggplot(aes(x=sampletag_name, y=amountUMI, fill=sampletag_name)) + 
+  	geom_boxplot(outlier.shape = "triangle") + 
+  	theme_classic() +
+  	theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  	theme(plot.title = element_text(hjust=0.5, face="bold")) +
+  	ggtitle("amount cells vs amount UMI")
+```
+
+## 3.11 Density and plot showing complexity amongst the virusFactors
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+seurat_d120_raw %>% 
+  ggplot(aes(color=virusFactor, x=log10GenesPerUMI, fill= virusFactor)) + 
+  geom_density(alpha = 0.2) + 
+  theme_classic()
+```
+
+## 3.12 Density and plot showing complexity amongst the virusFactors and replicates
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+seurat_d120_raw %>% 
+  ggplot(aes(color=sampletag_name, x=log10GenesPerUMI, fill= sampletag_name)) + 
+  geom_density(alpha = 0.2) + 
+  theme_classic()
+```
+
+## 
+
+## 3.13 Density plot showing rate of mitochondrial transcripts amongst virusFactors
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+seurat_d120_raw %>% 
+  ggplot(aes(color=virusFactor, x=mitoRatio, fill= virusFactor)) + 
+  geom_density(alpha = 0.2) +
+  theme_classic() 
+```
+
+## 3.14 Density plot showing rate of mitochondrial transcripts amongst virusFactors and replicates
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+seurat_d120_raw %>% 
+  ggplot(aes(color=sampletag_name, x=mitoRatio, fill= sampletag_name)) + 
+  geom_density(alpha = 0.2) +
+  theme_classic() 
+  
+```
+
+# 4) Filtering of poor quality cells
+
+```{r}
+seurat_d120_filtered = dplyr::filter(seurat_d120_raw, 
+                                (mitoRatio < 0.2) &
+                                (amountGenes > 500) &
+                                (amountUMI > 5000) &
+                                (log10GenesPerUMI > 0.8))
+```
+
+17309 cells out of 25962 cells were rretained
+
+## 4.1 Visualize the distribution of the amount of cells amongst the virusFactors after cell level filtering
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+seurat_d120_filtered %>% 
+  	ggplot(aes(x=virusFactor, fill=virusFactor)) + 
+  	geom_bar() +
+    scale_y_continuous(breaks=c(0,500,1000,1500,2000,2500,3000,3500)) + 
+  	theme_classic() +
+  	theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  	theme(plot.title = element_text(hjust=0.5, face="bold")) +
+  	ggtitle("Amount cells in the different virusFactors")
+```
+
+## 4.2 Visualize the distribution of the amount of cells amongst the virusFactors and replicate after cell level filtering
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+
+seurat_d120_filtered %>% 
+  	ggplot(aes(x=sampletag_name, fill=sampletag_name)) + 
+  	geom_bar(stat = "count") +
+    scale_y_continuous(breaks=c(0,500,1000,1500,2000,2500,3000,3500)) +
+  	theme_classic() +
+  	theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  	theme(plot.title = element_text(hjust=0.5, face="bold")) +
+  	ggtitle("Amount cells in the different virusFactors and Ms4a3")
+```
+
+# 5 Gene - level filtering
+
+We do not want to retain genes that are only expressed exclusively in a very low amount of cells as well
+
+```{r}
+countsDataset <- GetAssayData(object = seurat_d120_filtered, slot = "counts")
+
+nonzero <- countsDataset > 0
+# only retain genes who are expressed in 5 or more cells so we retain rare possible muts
+keep_genes <- Matrix::rowSums(nonzero) >= 5
+
+# Only keeping those genes expressed in more than 10 cells
+filtered_counts <- countsDataset[keep_genes, ]
+
+#create a new object filtered1 because otherwise you lose the other assay data
+seurat_d120_filtered1 <- CreateSeuratObject(counts = filtered_counts, meta.data = seurat_d120_filtered@meta.data)
+# copy them back from the object where the genes werent filtered
+seurat_d120_filtered1@assays$protein = seurat_d120_filtered@assays$protein
+seurat_d120_filtered1@assays$sampletags = seurat_d120_filtered@assays$sampletags
+```
+
+# After QC we retain 22846 genes and 16467 cells from 28958 genes and 21145 cells
+
+# 6 Normalization
+
+## 6.1 Normalize the counts
+
+```{r}
+seurat_d120_filtered_normalized = NormalizeData(seurat_d120_filtered1)
+```
+
+## 6.2 Check for effect of cell cycle
+
+if cells are differentiating it is expected that there are clear clustering differences between G2M and S.
+
+### 6.2.1 Get cell cycle genes for mouse
+
+```{r}
+cell_cycle_file <- getURL("https://raw.githubusercontent.com/hbc/tinyatlas/master/cell_cycle/Mus_musculus.csv") 
+cell_cycle_genes <- read.csv(text = cell_cycle_file)
+
+```
+
+### 6.2.2 convert the ensembl ID geneformat to geneID
+
+The genes from this list are all in ENSEMBL format while those in the seurat object are the gene ID's =\> convert it
+
+```{r, echo=FALSE}
+h <- AnnotationHub()
+
+# Access the Ensembl database for organism
+ahDb <- query(h, 
+              pattern = c("Mus musculus", "EnsDb"), 
+              ignore.case = TRUE)
+
+# Acquire the latest annotation files
+id <- ahDb %>%
+        mcols() %>%
+        rownames() %>%
+        tail(n = 1)
+
+# Download the appropriate Ensembldb database
+edb <- h[[id]]
+
+# Extract gene-level information from database
+annotations <- genes(edb, 
+                     return.type = "data.frame")
+
+# Select annotations of interest
+annotations <- annotations %>%
+        dplyr::select(gene_id, gene_name, seq_name, gene_biotype, description)
+
+# Get gene names for Ensembl IDs for each gene
+cell_cycle_markers <- dplyr::left_join(cell_cycle_genes, annotations, by = c("geneID" = "gene_id"))
+
+# Acquire the S phase genes
+s_genes <- cell_cycle_markers %>%
+        dplyr::filter(phase == "S") %>%
+        pull("gene_name")
+        
+# Acquire the G2M phase genes        
+g2m_genes <- cell_cycle_markers %>%
+        dplyr::filter(phase == "G2/M") %>%
+        pull("gene_name")
+```
+
+### 6.2.3 Cell Cycle Scoring
+
+```{r}
+# Perform cell cycle scoring
+seurat_d120_filtered_normalized <- CellCycleScoring(seurat_d120_filtered_normalized,
+ g2m.features = g2m_genes,
+ s.features = s_genes)
+
+
+```
+
+### 6.2.4 Violin plot of effect cell cycle
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+VlnPlot(seurat_d120_filtered_normalized, features = c("S.Score", "G2M.Score"), group.by = "sampletag_name")
+```
+
+The violin plot shows clear evidence of a substantial amount of cycling genes in this case. Further investigate this with a PCA plot
+
+### 6.2.5 PCA plot to assess effect cell cycle
+
+To do PCA we have to do 2 things, first choose the most variable genes (features) and then scale the data. This order is important because, highly expressed genes exhibit the highest amount of variation and we don't want our 'highly variable genes' only to reflect high expression, we need to scale the data to scale variation with expression level.
+
+```{r}
+seurat_d120_filtered_normalized <- FindVariableFeatures(seurat_d120_filtered_normalized, 
+                     selection.method = "vst",
+                     nfeatures = 2000, 
+                     verbose = FALSE)
+seurat_d120_filtered_normalized = ScaleData(seurat_d120_filtered_normalized)
+seurat_d120_filtered_normalized = RunPCA(seurat_d120_filtered_normalized)
+
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+DimPlot(seurat_d120_filtered_normalized,
+        reduction = "pca",
+        group.by= "Phase",
+        split.by = "Phase")
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+DimPlot(seurat_d120_filtered_normalized,
+        reduction = "pca",
+        group.by= "Phase")
+```
+
+# Clear effect of cell cycle
+
+```{r}
+seurat_d120_filtered_normalized |> write_rds("intermediate_data/seurat_obj_d120_afterQCdashboard.rds")
+```

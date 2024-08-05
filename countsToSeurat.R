@@ -15,7 +15,7 @@ easypackages::libraries("Seurat", "dplyr", "janitor", "forcats", "tidyseurat",
                         "Matrix", "vroom", "tidyfst", "readr", "stringr", "tidyverse")
 
 # Define the root directory for raw data
-raw_data_root <- "raw_data/machiels_lab/viral"
+raw_data_root <- "../../raw_data/machiels_lab/viral"
 
 # Define input and output file names
 # Avoid using "_" for experiment names because Seurat can't handle it
@@ -23,18 +23,25 @@ file_names_tbl <- tribble(
   ~name_for_merged_seurat_file, ~raw_data_root, ~dbec_file_path, ~name_for_seurat_file, ~sample_tag_reads_per_cell,
   
   # Experiment 1
-  "day8", # Name for merged Seurat file
+  "day8", # Name for merged file
   "../../Desktop/AnalysisArthur/rawData/", # Absolute path for raw_data_root
   "output_J8/Combined_BD-Analysis-BMachiels-J8_DBEC_MolsPerCell.csv", # Path to dbec file with relevant count data
   "seurat_obj_d8_raw_dbec", # Name for intermediate Seurat file output
   "output_J8/BD-Analysis-BMachiels-J8_Sample_Tag_ReadsPerCell.csv", # Path to sample tag reads per cell file
   
   # Experiment 2
-  "day38", # Name for merged Seurat file
+  "day38", # Name for merged file
   "../../Desktop/AnalysisArthur/rawData/", # Absolute path for raw_data_root
   "output_J38/Combined_BD-Analysis-BMachiels-J38_DBEC_MolsPerCell.csv", # Path to dbec file with relevant count data
   "seurat_obj_d38_raw_dbec", # Name for intermediate Seurat file output
-  "output_J38/BD-Analysis-BMachiels-J38_Sample_Tag_ReadsPerCell.csv" # Path to sample tag reads per cell file
+  "output_J38/BD-Analysis-BMachiels-J38_Sample_Tag_ReadsPerCell.csv", # Path to sample tag reads per cell file
+  
+  # Experiment 3
+  "day120", # Name for merged file
+  "../../Desktop/AnalysisArthur/rawData/", # Absolute path for raw_data_root
+  "output_J120/Combined_BD-Analysis-BMachiels-EXP3_DBEC_MolsPerCell.csv", # Path to dbec file with relevant count data
+  "seurat_obj_d120_raw_dbec", # Name for intermediate Seurat file output
+  "output_J120/BD-Analysis-BMachiels-EXP3_Sample_Tag_ReadsPerCell.csv" # Path to sample tag reads per cell file
 )
 
 # Define output paths
@@ -84,17 +91,7 @@ read_rhapsody_multi_assay_tibble_based <- function(dbec_counts_path, project_nam
     mutate(Cell_Index = as.character(Cell_Index)) %>%
     clean_names()
   
-  # colnames(sample_tag_reads) <- str_remove_all(colnames(sample_tag_reads), "_mm_st_ab_o")
-  # barcodes <- pull(sample_tag_reads, Cell_Index)
-  # sample_tag_reads <- sample_tag_reads %>% select(-Cell_Index)
-  # sample_tag_reads <- t(as.matrix(sample_tag_reads))
-  # colnames(sample_tag_reads) <- barcodes
-  # seurat[['sampletags']] <- CreateAssayObject(counts = sample_tag_reads)
-  # 
-  # 
-  # sample_tag_reads <- read_csv(sample_tag_reads, skip = 7) |> ## skip 7 because first 7 lines are not the data themselves
-  #   mutate(Cell_Index=as.character(Cell_Index)) |> clean_names()
-  # 
+
   colnames(sample_tag_reads) <- str_remove_all(colnames(sample_tag_reads), "_mm_st_ab_o")
   barcodes <- pull(sample_tag_reads,cell_index)
   sample_tag_reads <- sample_tag_reads |> select(-cell_index) |> tidyfst::t_dt()

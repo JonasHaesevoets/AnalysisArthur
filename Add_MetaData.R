@@ -16,4 +16,4 @@ obj$day_mock_condition = obj@meta.data %>% mutate(day_mock_condition = paste(day
 obj$virusFactor = factor(obj@meta.data$virusFactor, levels = c("Mock", "MuHV4", "del73"))
 
 
-obj |> write_rds("../../Desktop/AnalysisArthur/intermediate_data/seurat_obj_central.rds")
+obj |> write_rds("../../Desktop/AnalysisArthur/intermediate_data/seurat_obj_central.rds")f
