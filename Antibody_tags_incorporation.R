@@ -6,35 +6,12 @@ library(data.table)
 library(dsb)
 set.seed(2023)
 
-# read in all sequencing counts of all Rhapsody wells
-# this means also those wells that the rhapsody pipeline does not call as containing a cell
-
-## read in the empty
-unfiltered_csv_paths <- c( "../../Desktop/AnalysisArthur/rawData/Output_J8/BD-Analysis-BMachiels-J8_DBEC_MolsPerCell_Unfiltered.csv.gz",
-                           "../../Desktop/AnalysisArthur/rawData/Output_J38/BD-Analysis-BMachiels-J38_DBEC_MolsPerCell_Unfiltered.csv.gz",
-                           "../../Desktop/AnalysisArthur/rawData/Output_J120/BD-Analysis-BMachiels-EXP3_DBEC_MolsPerCell_Unfiltered.csv.gz")
-
-
-
-exp_name <- c("day8", "day38", "day120")
-
-for (i in seq_along(unfiltered_csv_paths)) {
-  # we read only those proteins who were actually stained
-  counts_fread = fread(unfiltered_csv_paths[i], select = c("Cell_Index",
-                                                           "CD274|CD274|AHS0004|pAbO",
-                                                           "I-A_I-E|H2-Ab_Ad_Aq_Ed_Ek|AMM2019|pAbO"), 
-                       showProgress = T)
-  #rename the proteins
-  colnames(counts_fread) <- c("cell_index","H2_ia_ie_AbSeq","Cd274_AbSeq")
-  write_csv(counts_fread,paste0("intermediate_data/",exp_name[i],"unfiltered_prot_counts_fread.csv") )
-}
-
 ###################
 
 
 # coming from the specific scripts for each of the data specific scripts which were ran in the QC dashboard
 day_8 = read_rds("intermediate_data/seurat_obj_d8_afterQCdashboard.rds")
-day_38 = read_rds("intermediate_data/seurat_obj_d8_afterQCdashboard.rds")
+day_38 = read_rds("intermediate_data/seurat_obj_d38_afterQCdashboard.rds")
 day_120 = read_rds("intermediate_data/seurat_obj_d120_afterQCdashboard.rds")
 setup_chunks <- c(day_8, day_38, day_120)
 
@@ -45,10 +22,6 @@ unfiltered_prot_counts <- c(
   "intermediate_data/day120unfiltered_prot_counts_fread.csv")
 
 dataset_name <- c("d8", "d38", "d120")
-
-# unfiltered_prot_counts <- unfiltered_prot_counts |> map_vec(\(x) paste0("intermediate_data/", x))
-
-
 plot_list <- list()
 # Loop through each element in 'unfiltered_prot_counts'
 for (i in seq_along(unfiltered_prot_counts)) {
@@ -74,7 +47,6 @@ for (i in seq_along(unfiltered_prot_counts)) {
   file = setup_chunks[i]
   
   # Update current Seurat object based on specified conditions
-  
   setup_chunks[[i]] <- setup_chunks[[i]] |>
     mutate(
       kept_cell = case_when(
@@ -123,9 +95,6 @@ for (i in seq_along(unfiltered_prot_counts)) {
 }
 
 
-# write_rds(plot_list,paste0(".\\intermediate_data\\protein_reads_QC_plot_list.rds"))
-
-
 
 
 
@@ -134,16 +103,17 @@ for (i in seq_along(unfiltered_prot_counts)) {
 path_1 <- "intermediate_data/seurat_obj_integrated.rds"
 
 # Read the Seurat object from the specified path
-obj.v5 <- read_rds(path_1)
-
+colnames(obj.v5)
 # Read and preprocess protein count matrices for each experiment
-d8 <- "intermediate_data/dsb_matrix_d8.rds" |> read_rds() |> t() |> as_tibble(rownames = "cell") |> mutate(cell = paste0("exp_1", cell))
-d38 <- "intermediate_data/dsb_matrix_d38.rds" |> read_rds() |> t() |> as_tibble(rownames = "cell") |> mutate(cell = paste0("exp_2", cell))
-d120 <- "intermediate_data/dsb_matrix_d120.rds" |> read_rds() |> t() |> as_tibble(rownames = "cell") |> mutate(cell = paste0("exp_3", cell))
+d8 <- "intermediate_data/dsb_matrix_d8.rds" |> read_rds() |> t() |> as_tibble(rownames = "cell") |> mutate(cell = paste0("day_8_", cell))
+d38 <- "intermediate_data/dsb_matrix_d38.rds" |> read_rds() |> t() |> as_tibble(rownames = "cell") |> mutate(cell = paste0("day_38_", cell))
+d120 <- "intermediate_data/dsb_matrix_d120.rds" |> read_rds() |> t() |> as_tibble(rownames = "cell") |> mutate(cell = paste0("day_120_", cell))
 
 # Combine all protein count matrices into one
 dsb_all <- bind_rows(d8, d38,d120)
-
+differentcells = setdiff(dsb_all$cell, colnames(obj.v5))
+print(differentcells)
+colnames(obj.v5)
 # Extract protein features
 dsb_features <- colnames(dsb_all)[-1]
 
@@ -228,3 +198,4 @@ write_rds(x = obj.v5, file = "intermediate_data/seurat_obj_central.rds")
 protein_names <- rownames(obj.v5@assays$protein)
 protein_names
 rownames(obj.v5@assays$adt$counts)
+FeaturePlot(obj.v5, features = "H2-ia-ie-AbSeq")

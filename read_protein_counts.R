@@ -4,11 +4,12 @@ library(data.table)
 library(R.utils)
 library(readr)
 unfiltered_csv_paths <- c( "../../Desktop/AnalysisArthur/rawData/Output_J8/BD-Analysis-BMachiels-J8_DBEC_MolsPerCell_Unfiltered.csv.gz",
-                           "../../Desktop/AnalysisArthur/rawData/Output_J38/BD-Analysis-BMachiels-J38_DBEC_MolsPerCell_Unfiltered.csv")
+                           "../../Desktop/AnalysisArthur/rawData/Output_J38/BD-Analysis-BMachiels-J38_DBEC_MolsPerCell_Unfiltered.csv.gz",
+                           "../../Desktop/AnalysisArthur/rawData/Output_J120/BD-Analysis-BMachiels-EXP3_DBEC_MolsPerCell_Unfiltered.csv.gz")
 
 
 
-exp_name <- c("day8", "day38")
+exp_name <- c("day8", "day38", "day120")
 
 for (i in seq_along(unfiltered_csv_paths)) {
   counts_fread = fread(unfiltered_csv_paths[i], select = c("Cell_Index",
@@ -20,3 +21,6 @@ for (i in seq_along(unfiltered_csv_paths)) {
   write_csv(counts_fread,paste0("../../Desktop/AnalysisArthur/intermediate_data/",exp_name[i],"unfiltered_prot_counts_fread.csv") )
   
 }
+
+
+
